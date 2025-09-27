@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
 import { getAssignmentsWithSubmission } from "@/lib/quercus";
+import { neon } from "@neondatabase/serverless";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -13,6 +13,8 @@ export async function GET(req: Request) {
   }
 
   try {
+    const sql = neon(process.env.NEON_DATABASE_URL!);
+
     const rows = await sql`
       select
         round(avg(percent))::int as avg,
@@ -49,20 +51,24 @@ export async function POST(req: Request) {
   const courseId = body?.courseId == null ? null : Number(body.courseId);
   const cookie = (body?.cookie ?? "").trim();
 
-  if (!assignmentId || Number.isNaN(assignmentId) || !courseId || Number.isNaN(courseId)) {
+  if (
+    !assignmentId ||
+    Number.isNaN(assignmentId) ||
+    !courseId ||
+    Number.isNaN(courseId)
+  ) {
     return NextResponse.json(
       { error: "assignmentId and courseId required" },
       { status: 400 }
     );
   }
   if (!cookie) {
-    return NextResponse.json(
-      { error: "cookie required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "cookie required" }, { status: 400 });
   }
 
   try {
+    const sql = neon(process.env.NEON_DATABASE_URL!);
+
     // 1) Fetch assignments (with user's submission) from Quercus
     const assignments = await getAssignmentsWithSubmission(courseId, cookie);
 
