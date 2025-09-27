@@ -3,7 +3,7 @@
 A browser extension and web application that helps University of Toronto students easily view assignment averages and compare their performance within Quercus courses.
 
 ## 🌐 Live Demo
-- **Web App**: https://quercus-ranked.vercel.app
+- **Web App**: https://quercus-ranked-web.vercel.app
 - **GitHub Repository**: https://github.com/Readtt/quercus-ranked
 
 ## 🚀 Features
