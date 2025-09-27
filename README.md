@@ -4,6 +4,7 @@ A browser extension and web application that helps University of Toronto student
 
 ## 🌐 Live Demo
 - **Web App**: https://quercus-ranked-web.vercel.app
+- **Chrome Extension**: https://chromewebstore.google.com/detail/quercus-ranked/ebjlhhfdbijmgdaeaeffgahbimkbbgik
 - **GitHub Repository**: https://github.com/Readtt/quercus-ranked
 
 ## 🚀 Features
