@@ -7,7 +7,7 @@ export function middleware(req: NextRequest) {
     const res = NextResponse.next();
 
     // Replace with your actual extension ID
-    const EXTENSION_ID = "eigcajjledcgdjcihjcocmajcgnnphdl";
+    const EXTENSION_ID = "ebjlhhfdbijmgdaeaeffgahbimkbbgik";
     const allowedOrigin = `chrome-extension://${EXTENSION_ID}`;
 
     res.headers.set("Access-Control-Allow-Origin", allowedOrigin);
