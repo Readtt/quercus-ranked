@@ -1,44 +1,46 @@
-import { NextResponse } from "next/server";
-import { getAssignmentsWithSubmission } from "@/lib/quercus";
 import { neon } from "@neondatabase/serverless";
+import {
+  getCourseAssignments,
+  getCourses,
+  getUser,
+} from "@workspace/quercus-client/api";
+import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const assignmentId = Number(searchParams.get("assignmentId"));
+  const courseIdParam = searchParams.get("courseId");
+  const courseId = courseIdParam ? Number(courseIdParam) : null;
+
   if (!assignmentId || Number.isNaN(assignmentId)) {
-    return NextResponse.json(
-      { error: "assignmentId required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "assignmentId required" }, { status: 400 });
+  }
+  if (courseIdParam && (courseId == null || Number.isNaN(courseId))) {
+    return NextResponse.json({ error: "courseId must be a number" }, { status: 400 });
   }
 
   try {
     const sql = neon(process.env.NEON_DATABASE_URL!);
 
-    const rows = await sql`
+    const rows = await sql/* sql */`
       select
-        round(avg(percent))::int as avg,
-        count(*)::int as count
+        round(avg(percent))::int     as avg,
+        count(distinct user_id)::int as count
       from assignment_scores
-      where assignment_id = ${assignmentId};
+      where assignment_id = ${assignmentId}
+        and percent is not null
+        and (${courseId} is null or course_id = ${courseId})
     `;
 
     const { avg, count } = rows?.[0] ?? { avg: null, count: 0 };
     return NextResponse.json({ assignmentId, avgPercent: avg, count });
   } catch (e: any) {
-    return NextResponse.json(
-      { error: e?.message ?? "DB error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e?.message ?? "DB error" }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
-  type Body = {
-    assignmentId?: number;
-    courseId?: number | null;
-    cookie?: string;
-  };
+  type Body = { cookie?: string };
 
   let body: Body | null = null;
   try {
@@ -47,21 +49,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const assignmentId = Number(body?.assignmentId);
-  const courseId = body?.courseId == null ? null : Number(body.courseId);
   const cookie = (body?.cookie ?? "").trim();
-
-  if (
-    !assignmentId ||
-    Number.isNaN(assignmentId) ||
-    !courseId ||
-    Number.isNaN(courseId)
-  ) {
-    return NextResponse.json(
-      { error: "assignmentId and courseId required" },
-      { status: 400 }
-    );
-  }
   if (!cookie) {
     return NextResponse.json({ error: "cookie required" }, { status: 400 });
   }
@@ -69,36 +57,78 @@ export async function POST(req: Request) {
   try {
     const sql = neon(process.env.NEON_DATABASE_URL!);
 
-    // 1) Fetch assignments (with user's submission) from Quercus
-    const assignments = await getAssignmentsWithSubmission(courseId, cookie);
-
-    // 2) Find the specific assignment
-    const a = assignments.find((x: any) => Number(x.id) === assignmentId);
-    if (!a) {
+    // 0) Who is the user? (for user_id)
+    const userRes = await getUser({ headers: { cookie } });
+    if (!userRes.success || !userRes.data) {
       return NextResponse.json(
-        { error: "Assignment not found in course or not accessible" },
-        { status: 404 }
+        { error: userRes.error?.message || "Failed to fetch user" },
+        { status: 502 }
       );
     }
+    const userId = userRes.data.id;
 
-    // 3) Compute percent from server-side submission data
-    const score = a?.submission?.score ?? null;
-    const pts = a?.points_possible ?? null;
+    // 1) Fetch all active student courses
+    const coursesRes = await getCourses({ headers: { cookie } });
+    if (!coursesRes.success || !coursesRes.data) {
+      return NextResponse.json(
+        { error: coursesRes.error?.message || "Failed to fetch courses" },
+        { status: 502 }
+      );
+    }
+    const courses = coursesRes.data;
 
-    if (score == null || pts == null || pts === 0) {
-      // No score yet → do nothing (avoid inserting nulls)
-      return NextResponse.json({ ok: false, reason: "no_score" });
+    let processed = 0;
+    let upserts = 0;
+    let skippedNoScore = 0;
+
+    // 2) For each course, fetch assignments (with user's submission)
+    for (const course of courses) {
+      const courseId = course.id;
+
+      const aRes = await getCourseAssignments(courseId, { headers: { cookie } });
+      if (!aRes.success || !aRes.data) {
+        // skip this course but continue others
+        continue;
+      }
+
+      for (const a of aRes.data) {
+        processed++;
+
+        const score = a?.submission?.score ?? null;
+        const pts = a?.points_possible ?? null;
+
+        if (score == null || pts == null || pts === 0) {
+          skippedNoScore++;
+          continue;
+        }
+
+        // Compute and clamp to 0..100 just in case
+        let percent = Math.round((score / pts) * 100);
+        if (percent < 0) percent = 0;
+        if (percent > 100) percent = 100;
+
+        // 3) Upsert per-(assignment_id, user_id)
+        await sql/* sql */`
+          insert into assignment_scores (user_id, course_id, assignment_id, percent)
+          values (${userId}, ${courseId}, ${a.id}, ${percent})
+          on conflict (assignment_id, user_id)
+          do update set
+            percent    = excluded.percent,
+            course_id  = excluded.course_id,
+            updated_at = now();
+        `;
+
+        upserts++;
+      }
     }
 
-    const percent = Math.round((score / pts) * 100);
-
-    // 4) Persist to Neon
-    await sql`
-      insert into assignment_scores (assignment_id, course_id, percent)
-      values (${assignmentId}, ${courseId}, ${percent});
-    `;
-
-    return NextResponse.json({ ok: true, percent });
+    return NextResponse.json({
+      ok: true,
+      userId,
+      processed,
+      upserts,
+      skippedNoScore,
+    });
   } catch (e: any) {
     return NextResponse.json(
       { error: e?.message ?? "Server error" },

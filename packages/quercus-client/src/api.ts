@@ -1,9 +1,4 @@
-import {
-  QuercusAssignment,
-  QuercusCourse,
-  QuercusSubmission,
-  QuercusUser,
-} from "./types";
+import { QuercusAssignment, QuercusCourse, QuercusUser } from "./types";
 
 const BASE_URL = "https://q.utoronto.ca";
 
@@ -19,13 +14,15 @@ type ApiResponse<T> = {
   error: ApiError | null;
 };
 
+const isBrowser = typeof window !== "undefined";
+
 /**
  * Generic fetch wrapper for Quercus API
  * @param path API path, e.g. `/api/v1/users/self`
  * @param options fetch options
  * @returns ApiResponse<T>
  */
-export async function fetchQuercus<T = any>(
+export async function fetchQuercus<T = unknown>(
   path: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
@@ -36,7 +33,8 @@ export async function fetchQuercus<T = any>(
         "Content-Type": "application/json",
         ...(options.headers || {}),
       },
-      credentials: "include",
+      // Only include cookies in the browser; avoid server/SSR surprises & CORS issues.
+      credentials: isBrowser ? "include" : "omit",
     });
 
     if (!response.ok) {
@@ -60,29 +58,27 @@ export async function fetchQuercus<T = any>(
       error: {
         status: -1,
         statusText: "FetchError",
-        message: err.message || "Unknown error",
+        message: err?.message || "Unknown error",
       },
     };
   }
 }
 
-/**
- * Fetch the current user’s assignments in a course
- * @returns ApiResponse<QuercusAssignment[]>
- */
+/** Fetch the current user’s assignments in a course */
 export async function getCourseAssignments(
-  courseId: number
+  courseId: number,
+  options: RequestInit = {}
 ): Promise<ApiResponse<QuercusAssignment[]>> {
   return fetchQuercus<QuercusAssignment[]>(
-    `/api/v1/users/self/courses/${courseId}/assignments?include[]=submission`
+    `/api/v1/users/self/courses/${courseId}/assignments?include[]=submission`,
+    options
   );
 }
 
-/**
- * Fetch the current user’s active student courses
- * @returns ApiResponse<QuercusCourse[]>
- */
-export async function getCourses(): Promise<ApiResponse<QuercusCourse[]>> {
+/** Fetch the current user’s active student courses */
+export async function getCourses(
+  options: RequestInit = {}
+): Promise<ApiResponse<QuercusCourse[]>> {
   return fetchQuercus<QuercusCourse[]>(
     "/api/v1/users/self/courses" +
       "?include[]=needs_grading_count" +
@@ -106,16 +102,17 @@ export async function getCourses(): Promise<ApiResponse<QuercusCourse[]>> {
       "&include[]=concluded" +
       "&include[]=post_manually" +
       "&enrollment_type=student" +
-      "&enrollment_state=active"
+      "&enrollment_state=active",
+    options
   );
 }
 
-/**
- * Fetch the current user’s profile information
- * @returns ApiResponse<QuercusUser>
- */
-export async function getUser(): Promise<ApiResponse<QuercusUser>> {
+/** Fetch the current user’s profile information */
+export async function getUser(
+  options: RequestInit = {}
+): Promise<ApiResponse<QuercusUser>> {
   return fetchQuercus<QuercusUser>(
-    "/api/v1/users/self?include[]=uuid&include[]=last_login"
+    "/api/v1/users/self?include[]=uuid&include[]=last_login",
+    options
   );
 }

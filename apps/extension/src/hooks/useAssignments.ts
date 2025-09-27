@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
-import { getCourseAssignments } from "@/utils/api";
-import { QuercusAssignment } from "@/utils/types";
+import { getCourseAssignments } from "@workspace/quercus-client/api";
+import { QuercusAssignment } from "@workspace/quercus-client/types";
 
 type AssignmentsByCourse = Record<number, QuercusAssignment[]>;
 type LoadingByCourse = Record<number, boolean>;

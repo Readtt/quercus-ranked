@@ -1,4 +1,4 @@
-import { QuercusAssignment } from "./types";
+import { QuercusAssignment } from "@workspace/quercus-client/types";
 
 export const pct = (score?: number | null, denom?: number | null) => {
   if (score == null || denom == null || denom === 0) return null;

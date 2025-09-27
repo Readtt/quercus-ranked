@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { getCourses, getUser } from "@/utils/api";
-import { QuercusCourse, QuercusUser } from "@/utils/types";
+import { getCourses, getUser } from "@workspace/quercus-client/api";
+import { QuercusCourse, QuercusUser } from "@workspace/quercus-client/types";
 
 const is401 = (status?: number | null) => status === 401;
 

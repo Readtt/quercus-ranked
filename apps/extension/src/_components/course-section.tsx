@@ -1,11 +1,16 @@
-// apps/extension/src/_components/course-section.tsx
-import { useEffect, useMemo, useState } from "react";
-import { fetchAssignmentAverage, submitAssignmentServerSide } from "@/utils/averages";
-import { pct, formatYourGrade } from "@/utils/grades";
-import { AccordionContent, AccordionItem, AccordionTrigger } from "@workspace/ui/components/accordion";
+import { fetchAssignmentAverage } from "@/utils/averages";
+import { formatYourGrade } from "@/utils/grades";
+import {
+  QuercusAssignment,
+  QuercusCourse,
+} from "@workspace/quercus-client/types";
+import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@workspace/ui/components/accordion";
 import { BookOpen, CheckCircle } from "lucide-react";
-import { QuercusAssignment, QuercusCourse } from "@/utils/types";
-import { getQuercusCookieHeader } from "@/utils/quercus-cookies";
+import { useEffect, useMemo, useState } from "react";
 
 type Props = {
   course: QuercusCourse;
@@ -30,7 +35,6 @@ export function CourseSection({
   );
 
   const [avgByAssignment, setAvgByAssignment] = useState<AvgMap>({});
-  const [submittedFor, setSubmittedFor] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     (async () => {
@@ -49,25 +53,6 @@ export function CourseSection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graded.length]);
 
-useEffect(() => {
-  (async () => {
-    const cookie = await getQuercusCookieHeader();
-
-    for (const a of graded) {
-      if (submittedFor[a.id]) continue;
-
-      submitAssignmentServerSide({
-        assignmentId: a.id,
-        courseId: a.course_id,
-        cookie,
-      }).finally(() => {
-        setSubmittedFor((prev) => ({ ...prev, [a.id]: true }));
-      });
-    }
-  })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [graded.length]);
-
   return (
     <AccordionItem value={course.id.toString()}>
       <AccordionTrigger className="px-4 py-3 hover:bg-muted/50">
@@ -75,7 +60,9 @@ useEffect(() => {
           <span className="font-semibold text-sm">
             {course.course_code}
             {course.teachers?.[0] && (
-              <p className="text-xs text-muted-foreground">{course.teachers[0].display_name}</p>
+              <p className="text-xs text-muted-foreground">
+                {course.teachers[0].display_name}
+              </p>
             )}
           </span>
         </div>
@@ -84,7 +71,12 @@ useEffect(() => {
         {unauthorized ? (
           <div className="text-xs text-muted-foreground">
             Please log in to Quercus to view assignments.{" "}
-            <a href="https://q.utoronto.ca/" target="_blank" rel="noreferrer" className="underline">
+            <a
+              href="https://q.utoronto.ca/"
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
               https://q.utoronto.ca/
             </a>
           </div>
@@ -107,7 +99,8 @@ useEffect(() => {
           <div className="space-y-3">
             {graded.map((assignment) => {
               const fg = formatYourGrade(assignment);
-              const isGraded = assignment.submission?.workflow_state === "graded";
+              const isGraded =
+                assignment.submission?.workflow_state === "graded";
               const avgInfo = avgByAssignment[assignment.id];
               const avgText = avgInfo?.avg != null ? `${avgInfo.avg}%` : "—";
 
@@ -119,16 +112,26 @@ useEffect(() => {
                   }`}
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-medium text-sm truncate pr-2 flex-1">{assignment.name}</h4>
-                    {isGraded && <CheckCircle className="w-4 h-4 text-green-600" />}
+                    <h4 className="font-medium text-sm truncate pr-2 flex-1">
+                      {assignment.name}
+                    </h4>
+                    {isGraded && (
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                    )}
                   </div>
                   <div className="flex justify-between items-center">
                     <div className="flex gap-4 text-xs">
-                      <span className={`font-medium ${fg.color}`}>{fg.text}</span>
-                      <span className="text-muted-foreground">Avg: {avgText}</span>
+                      <span className={`font-medium ${fg.color}`}>
+                        {fg.text}
+                      </span>
+                      <span className="text-muted-foreground">
+                        Avg: {avgText}
+                      </span>
                     </div>
                     {avgInfo?.count ? (
-                      <span className="text-[10px] text-muted-foreground">{avgInfo.count} submissions</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {avgInfo.count} submissions
+                      </span>
                     ) : null}
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 import { AccordionContent, AccordionItem, AccordionTrigger } from "@workspace/ui/components/accordion";
 import { Badge } from "@workspace/ui/components/badge";
 import { BookOpen, GraduationCap, Mail, User, Users } from "lucide-react";
-import { QuercusCourse, QuercusUser } from "@/utils/types";
+import { QuercusCourse, QuercusUser } from "@workspace/quercus-client/types";
 import { ProfileSkeleton } from "./skeletons";
 
 type Props = {
