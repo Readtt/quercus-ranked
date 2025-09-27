@@ -27,7 +27,7 @@ export const ProfileSkeleton = () => (
 
 export const AssignmentListSkeleton = () => (
   <div className="space-y-3">
-    {Array.from({ length: 4 }).map((_, i) => (
+    {Array.from({ length: 1 }).map((_, i) => (
       <div key={i} className="p-3 rounded-lg border bg-card">
         <div className="flex justify-between items-start mb-2">
           <Skeleton className="h-4 w-48" />

@@ -1,10 +1,11 @@
+// apps/extension/src/_components/course-section.tsx
+import { useEffect, useMemo, useState } from "react";
+import { fetchAssignmentAverage, submitAssignmentServerSide } from "@/utils/averages";
+import { pct, formatYourGrade } from "@/utils/grades";
 import { AccordionContent, AccordionItem, AccordionTrigger } from "@workspace/ui/components/accordion";
 import { BookOpen, CheckCircle } from "lucide-react";
 import { QuercusAssignment, QuercusCourse } from "@/utils/types";
-import { AssignmentListSkeleton } from "./skeletons";
-import { formatYourGrade } from "@/utils/grades";
-
-const DEFAULT_CLASS_AVG = 78;
+import { getQuercusCookieHeader } from "@/utils/quercus-cookies";
 
 type Props = {
   course: QuercusCourse;
@@ -14,6 +15,8 @@ type Props = {
   hasFetched: boolean;
 };
 
+type AvgMap = Record<number, { avg: number | null; count: number }>;
+
 export function CourseSection({
   course,
   unauthorized,
@@ -21,7 +24,49 @@ export function CourseSection({
   isLoadingThisCourse,
   hasFetched,
 }: Props) {
-  const graded = assignments.filter((v) => v.submission?.workflow_state === "graded");
+  const graded = useMemo(
+    () => assignments.filter((v) => v.submission?.workflow_state === "graded"),
+    [assignments]
+  );
+
+  const [avgByAssignment, setAvgByAssignment] = useState<AvgMap>({});
+  const [submittedFor, setSubmittedFor] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    (async () => {
+      const ids = graded.map((g) => g.id);
+      await Promise.all(
+        ids.map(async (id) => {
+          if (avgByAssignment[id] !== undefined) return;
+          const res = await fetchAssignmentAverage(id);
+          setAvgByAssignment((prev) => ({
+            ...prev,
+            [id]: { avg: res?.avgPercent ?? null, count: res?.count ?? 0 },
+          }));
+        })
+      );
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [graded.length]);
+
+useEffect(() => {
+  (async () => {
+    const cookie = await getQuercusCookieHeader();
+
+    for (const a of graded) {
+      if (submittedFor[a.id]) continue;
+
+      submitAssignmentServerSide({
+        assignmentId: a.id,
+        courseId: a.course_id,
+        cookie,
+      }).finally(() => {
+        setSubmittedFor((prev) => ({ ...prev, [a.id]: true }));
+      });
+    }
+  })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [graded.length]);
 
   return (
     <AccordionItem value={course.id.toString()}>
@@ -44,9 +89,15 @@ export function CourseSection({
             </a>
           </div>
         ) : !hasFetched && !isLoadingThisCourse ? (
-          <AssignmentListSkeleton />
+          <div className="text-center py-8 text-muted-foreground">
+            <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-xs">Loading assignments…</p>
+          </div>
         ) : isLoadingThisCourse ? (
-          <AssignmentListSkeleton />
+          <div className="text-center py-8 text-muted-foreground">
+            <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p className="text-xs">Loading assignments…</p>
+          </div>
         ) : graded.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <BookOpen className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -57,25 +108,28 @@ export function CourseSection({
             {graded.map((assignment) => {
               const fg = formatYourGrade(assignment);
               const isGraded = assignment.submission?.workflow_state === "graded";
+              const avgInfo = avgByAssignment[assignment.id];
+              const avgText = avgInfo?.avg != null ? `${avgInfo.avg}%` : "—";
+
               return (
                 <div
                   key={assignment.id}
                   className={`p-3 rounded-lg border transition-all hover:shadow-sm ${
-                    isGraded && "bg-green-50 border-greem-200"
+                    isGraded ? "bg-green-50 border-green-200" : ""
                   }`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-medium text-sm truncate pr-2 flex-1">{assignment.name}</h4>
-                    <div className="flex items-center">
-                      {isGraded && <CheckCircle className="w-4 h-4 text-green-600" />}
-                    </div>
+                    {isGraded && <CheckCircle className="w-4 h-4 text-green-600" />}
                   </div>
-
                   <div className="flex justify-between items-center">
                     <div className="flex gap-4 text-xs">
                       <span className={`font-medium ${fg.color}`}>{fg.text}</span>
-                      <span className="text-muted-foreground">Avg: {DEFAULT_CLASS_AVG}%</span>
+                      <span className="text-muted-foreground">Avg: {avgText}</span>
                     </div>
+                    {avgInfo?.count ? (
+                      <span className="text-[10px] text-muted-foreground">{avgInfo.count} submissions</span>
+                    ) : null}
                   </div>
                 </div>
               );

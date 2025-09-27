@@ -19,10 +19,19 @@ const App = () => {
 
   return (
     <Card className="w-80 rounded-none border gap-0 py-0 shadow-lg">
+      {/* Preload dynamic grade colors for tailwind to include in style */}
+      <div className="hidden">
+        <p className="text-green-600"></p>
+        <p className="text-green-500"></p>
+        <p className="text-yellow-500"></p>
+        <p className="text-orange-500"></p>
+        <p className="text-red-500"></p>
+      </div>
+
       <CardHeader className="flex flex-col gap-2 border-b py-4 [.border-b]:pb-4 bg-gradient-to-r from-red-50 to-red-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-3 h-3 bg-gradient-to-br from-red-500 to-red-700 rotate-45 shadow-sm" />
+           <div className="w-4 h-4 bg-gradient-to-br from-red-500 to-red-700 shadow-sm [clip-path:polygon(50%_0%,85%_50%,50%_100%,15%_50%)]" />
             <CardTitle className="text-base font-bold bg-gradient-to-r from-red-600 to-red-800 bg-clip-text text-transparent">
               Quercus Ranked
             </CardTitle>
