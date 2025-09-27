@@ -27,7 +27,7 @@ export async function fetchAssignmentAverage(
 
 export async function syncAssignments() {
   try {
-    const cookie = getQuercusCookieHeader();
+    const cookie = await getQuercusCookieHeader();
     
     await fetch(`${API_BASE}/api/averages`, {
       method: "POST",

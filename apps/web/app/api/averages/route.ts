@@ -9,14 +9,9 @@ import { NextResponse } from "next/server";
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const assignmentId = Number(searchParams.get("assignmentId"));
-  const courseIdParam = searchParams.get("courseId");
-  const courseId = courseIdParam ? Number(courseIdParam) : null;
 
   if (!assignmentId || Number.isNaN(assignmentId)) {
     return NextResponse.json({ error: "assignmentId required" }, { status: 400 });
-  }
-  if (courseIdParam && (courseId == null || Number.isNaN(courseId))) {
-    return NextResponse.json({ error: "courseId must be a number" }, { status: 400 });
   }
 
   try {
@@ -29,7 +24,6 @@ export async function GET(req: Request) {
       from assignment_scores
       where assignment_id = ${assignmentId}
         and percent is not null
-        and (${courseId} is null or course_id = ${courseId})
     `;
 
     const { avg, count } = rows?.[0] ?? { avg: null, count: 0 };
