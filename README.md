@@ -56,15 +56,33 @@ This monorepo contains:
    pnpm install
    ```
 
-3. **Set up environment variables**
+3. **Set up the database**
+   
+   Create a Neon database and run the following SQL to create the required table:
+   ```sql
+   CREATE TABLE assignment_scores (
+     user_hash VARCHAR(64) NOT NULL,
+     course_id INTEGER NOT NULL,
+     assignment_id INTEGER NOT NULL,
+     percent INTEGER NOT NULL,
+     created_at TIMESTAMP DEFAULT NOW(),
+     updated_at TIMESTAMP DEFAULT NOW(),
+     PRIMARY KEY (assignment_id, user_hash)
+   );
+   
+   CREATE INDEX idx_assignment_scores_assignment_id ON assignment_scores(assignment_id);
+   CREATE INDEX idx_assignment_scores_user_hash ON assignment_scores(user_hash);
+   ```
+
+4. **Set up environment variables**
    
    Create a `.env` file in the `apps/web` directory:
    ```env
-   DATABASE_URL=your_neon_database_url
+   NEON_DATABASE_URL=your_neon_database_url
    USER_HASH_SECRET=super-long-random-string
    ```
 
-4. **Start the project**
+5. **Start the project**
    ```bash
    pnpm install
    pnpm dev
