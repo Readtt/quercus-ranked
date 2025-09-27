@@ -5,6 +5,13 @@ import {
   getUser,
 } from "@workspace/quercus-client/api";
 import { NextResponse } from "next/server";
+import crypto from "node:crypto";
+
+function userHash(id: number | string) {
+  const secret = process.env.USER_HASH_SECRET!;
+  // Deterministic, irreversible mapping without the secret
+  return crypto.createHmac("sha256", secret).update(String(id)).digest("hex");
+}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -19,8 +26,8 @@ export async function GET(req: Request) {
 
     const rows = await sql/* sql */`
       select
-        round(avg(percent))::int     as avg,
-        count(distinct user_id)::int as count
+        round(avg(percent))::int       as avg,
+        count(distinct user_hash)::int as count
       from assignment_scores
       where assignment_id = ${assignmentId}
         and percent is not null
@@ -51,7 +58,7 @@ export async function POST(req: Request) {
   try {
     const sql = neon(process.env.NEON_DATABASE_URL!);
 
-    // 0) Who is the user? (for user_id)
+    // 0) Who is the user? (for hashing only)
     const userRes = await getUser({ headers: { cookie } });
     if (!userRes.success || !userRes.data) {
       return NextResponse.json(
@@ -60,6 +67,7 @@ export async function POST(req: Request) {
       );
     }
     const userId = userRes.data.id;
+    const uhash = userHash(userId);
 
     // 1) Fetch all active student courses
     const coursesRes = await getCourses({ headers: { cookie } });
@@ -81,7 +89,6 @@ export async function POST(req: Request) {
 
       const aRes = await getCourseAssignments(courseId, { headers: { cookie } });
       if (!aRes.success || !aRes.data) {
-        // skip this course but continue others
         continue;
       }
 
@@ -96,16 +103,15 @@ export async function POST(req: Request) {
           continue;
         }
 
-        // Compute and clamp to 0..100 just in case
         let percent = Math.round((score / pts) * 100);
         if (percent < 0) percent = 0;
         if (percent > 100) percent = 100;
 
-        // 3) Upsert per-(assignment_id, user_id)
+        // 3) Upsert per-(assignment_id, user_hash)
         await sql/* sql */`
-          insert into assignment_scores (user_id, course_id, assignment_id, percent)
-          values (${userId}, ${courseId}, ${a.id}, ${percent})
-          on conflict (assignment_id, user_id)
+          insert into assignment_scores (user_hash, course_id, assignment_id, percent)
+          values (${uhash}, ${courseId}, ${a.id}, ${percent})
+          on conflict (assignment_id, user_hash)
           do update set
             percent    = excluded.percent,
             course_id  = excluded.course_id,
@@ -118,7 +124,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
-      userId,
       processed,
       upserts,
       skippedNoScore,
