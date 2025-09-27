@@ -9,7 +9,6 @@ import crypto from "node:crypto";
 
 function userHash(id: number | string) {
   const secret = process.env.USER_HASH_SECRET!;
-  // Deterministic, irreversible mapping without the secret
   return crypto.createHmac("sha256", secret).update(String(id)).digest("hex");
 }
 
@@ -18,13 +17,16 @@ export async function GET(req: Request) {
   const assignmentId = Number(searchParams.get("assignmentId"));
 
   if (!assignmentId || Number.isNaN(assignmentId)) {
-    return NextResponse.json({ error: "assignmentId required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "assignmentId required" },
+      { status: 400 }
+    );
   }
 
   try {
     const sql = neon(process.env.NEON_DATABASE_URL!);
 
-    const rows = await sql/* sql */`
+    const rows = await sql`
       select
         round(avg(percent))::int       as avg,
         count(distinct user_hash)::int as count
@@ -36,7 +38,10 @@ export async function GET(req: Request) {
     const { avg, count } = rows?.[0] ?? { avg: null, count: 0 };
     return NextResponse.json({ assignmentId, avgPercent: avg, count });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "DB error" }, { status: 500 });
+    return NextResponse.json(
+      { error: e?.message ?? "DB error" },
+      { status: 500 }
+    );
   }
 }
 
@@ -58,7 +63,6 @@ export async function POST(req: Request) {
   try {
     const sql = neon(process.env.NEON_DATABASE_URL!);
 
-    // 0) Who is the user? (for hashing only)
     const userRes = await getUser({ headers: { cookie } });
     if (!userRes.success || !userRes.data) {
       return NextResponse.json(
@@ -69,7 +73,6 @@ export async function POST(req: Request) {
     const userId = userRes.data.id;
     const uhash = userHash(userId);
 
-    // 1) Fetch all active student courses
     const coursesRes = await getCourses({ headers: { cookie } });
     if (!coursesRes.success || !coursesRes.data) {
       return NextResponse.json(
@@ -83,11 +86,12 @@ export async function POST(req: Request) {
     let upserts = 0;
     let skippedNoScore = 0;
 
-    // 2) For each course, fetch assignments (with user's submission)
     for (const course of courses) {
       const courseId = course.id;
 
-      const aRes = await getCourseAssignments(courseId, { headers: { cookie } });
+      const aRes = await getCourseAssignments(courseId, {
+        headers: { cookie },
+      });
       if (!aRes.success || !aRes.data) {
         continue;
       }
@@ -107,8 +111,7 @@ export async function POST(req: Request) {
         if (percent < 0) percent = 0;
         if (percent > 100) percent = 100;
 
-        // 3) Upsert per-(assignment_id, user_hash)
-        await sql/* sql */`
+        await sql`
           insert into assignment_scores (user_hash, course_id, assignment_id, percent)
           values (${uhash}, ${courseId}, ${a.id}, ${percent})
           on conflict (assignment_id, user_hash)

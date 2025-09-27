@@ -5,6 +5,8 @@ import { ProfileSection } from "./_components/profile-section";
 import { UnauthorizedBanner } from "./_components/unauthorized-banner";
 import { useAssignments } from "./hooks/useAssignments";
 import { useCoreData } from "./hooks/useCoreData";
+import { useEffect } from "react";
+import { syncAssignments } from "./utils/averages";
 
 const App = () => {
   const { user, courses, coreLoading, unauthorized, setUnauthorized } = useCoreData();
@@ -16,6 +18,10 @@ const App = () => {
     loadingByCourse,
     fetchedByCourse,
   } = useAssignments({ unauthorized, setUnauthorized });
+
+  useEffect(() => {
+    syncAssignments();
+  }, [])
 
   return (
     <Card className="w-80 rounded-none border gap-0 py-0 shadow-lg">
