@@ -1,7 +1,18 @@
 {
   "name": "quercus-ranked",
   "version": "0.0.1",
-  "private": true,
+  "description": "A browser extension and web application that helps University of Toronto students easily view assignment averages and compare their performance within Quercus courses.",
+  "keywords": ["quercus", "university-of-toronto", "grades", "browser-extension", "education"],
+  "homepage": "https://github.com/Readtt/quercus-ranked#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Readtt/quercus-ranked.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Readtt/quercus-ranked/issues"
+  },
+  "license": "MIT",
+  "author": "Readtt",
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",

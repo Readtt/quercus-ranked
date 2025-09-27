@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Quercus Ranked",
   "version": "0.0.1",
-  "description": "Easily view assignment averages and compare performance within your Quercus courses.",
+  "description": "A browser extension that helps University of Toronto students easily view assignment averages and compare their performance within Quercus courses.",
   "action": {
     "default_popup": "index.html",
     "default_title": "Quercus Ranked"
