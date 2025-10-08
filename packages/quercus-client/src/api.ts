@@ -1,75 +1,13 @@
 import { QuercusAssignment, QuercusCourse, QuercusUser } from "./types";
+import { ApiClient, ApiResponse } from "@workspace/api-client";
 
-const BASE_URL = "https://q.utoronto.ca";
+const client = new ApiClient("https://q.utoronto.ca");
 
-type ApiError = {
-  status: number;
-  statusText: string;
-  message: string;
-};
-
-type ApiResponse<T> = {
-  success: boolean;
-  data: T | null;
-  error: ApiError | null;
-};
-
-const isBrowser = typeof window !== "undefined";
-
-/**
- * Generic fetch wrapper for Quercus API
- * @param path API path, e.g. `/api/v1/users/self`
- * @param options fetch options
- * @returns ApiResponse<T>
- */
-export async function fetchQuercus<T = unknown>(
-  path: string,
-  options: RequestInit = {}
-): Promise<ApiResponse<T>> {
-  try {
-    const response: Response = await fetch(`${BASE_URL}${path}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...(options.headers || {}),
-      },
-      // Only include cookies in the browser; avoid server/SSR surprises & CORS issues.
-      credentials: isBrowser ? "include" : "omit",
-    });
-
-    if (!response.ok) {
-      return {
-        success: false,
-        data: null,
-        error: {
-          status: response.status,
-          statusText: response.statusText,
-          message: `Quercus API error: ${response.status} ${response.statusText}`,
-        },
-      };
-    }
-
-    const data: T = await response.json();
-    return { success: true, data, error: null };
-  } catch (err: any) {
-    return {
-      success: false,
-      data: null,
-      error: {
-        status: -1,
-        statusText: "FetchError",
-        message: err?.message || "Unknown error",
-      },
-    };
-  }
-}
-
-/** Fetch the current user’s assignments in a course */
 export async function getCourseAssignments(
   courseId: number,
   options: RequestInit = {}
 ): Promise<ApiResponse<QuercusAssignment[]>> {
-  return fetchQuercus<QuercusAssignment[]>(
+  return client.get<QuercusAssignment[]>(
     `/api/v1/users/self/courses/${courseId}/assignments?include[]=submission`,
     options
   );
@@ -79,7 +17,7 @@ export async function getCourseAssignments(
 export async function getCourses(
   options: RequestInit = {}
 ): Promise<ApiResponse<QuercusCourse[]>> {
-  return fetchQuercus<QuercusCourse[]>(
+  return client.get<QuercusCourse[]>(
     "/api/v1/users/self/courses" +
       "?include[]=needs_grading_count" +
       "&include[]=syllabus_body" +
@@ -111,7 +49,7 @@ export async function getCourses(
 export async function getUser(
   options: RequestInit = {}
 ): Promise<ApiResponse<QuercusUser>> {
-  return fetchQuercus<QuercusUser>(
+  return client.get<QuercusUser>(
     "/api/v1/users/self?include[]=uuid&include[]=last_login",
     options
   );

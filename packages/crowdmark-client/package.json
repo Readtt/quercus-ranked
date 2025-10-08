@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/quercus-client",
+  "name": "@workspace/crowdmark-client",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "@workspace/typescript-config": "workspace:*",
-        "@workspace/api-client": "workspace:*",
+    "@workspace/api-client": "workspace:*",
     "typescript": "latest"
   }
 }

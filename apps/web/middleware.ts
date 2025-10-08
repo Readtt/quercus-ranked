@@ -6,13 +6,21 @@ export function middleware(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith("/api/")) {
     const res = NextResponse.next();
 
-    // Replace with your actual extension ID
-    const EXTENSION_ID = "ebjlhhfdbijmgdaeaeffgahbimkbbgik";
-    const allowedOrigin = `chrome-extension://${EXTENSION_ID}`;
+    const allowedOrigins = [
+      "chrome-extension://ebjlhhfdbijmgdaeaeffgahbimkbbgik",
+      "chrome-extension://eigcajjledcgdjcihjcocmajcgnnphdl",
+    ];
 
-    res.headers.set("Access-Control-Allow-Origin", allowedOrigin);
+    const origin = req.headers.get("origin");
+    if (origin && allowedOrigins.includes(origin)) {
+      res.headers.set("Access-Control-Allow-Origin", origin);
+    }
+
     res.headers.set("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-    res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.headers.set(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization"
+    );
 
     // Handle preflight requests quickly
     if (req.method === "OPTIONS") {
